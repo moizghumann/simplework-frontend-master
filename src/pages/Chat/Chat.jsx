@@ -1,4 +1,4 @@
-import React,{useState} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FaPaperclip, FaRegSmile } from "react-icons/fa";
 import chatAvatar from "../../assets/Images/chatAvatar.svg";
 import chatMsg from "../../assets/Images/chatMsg.svg";
@@ -10,29 +10,107 @@ import settingsChat from "../../assets/Images/settingsChat.svg";
 import micChat from "../../assets/Images/micChat.svg";
 import dropdown from "../../assets/Images/dropdown.svg";
 import searchChat from "../../assets/Images/searchChat.svg";
-import gigChat from "../../assets/Images/gigChat.svg";
 import GigModal from "../../components/Chat/GigModal";
+import { GetLoggedInUser } from "../../Api_Requests/Api_Requests";
+import ChatProfileSection from "@/components/Chat-Profile-Section/ChatProfileSection";
+import { useFirebase } from "@/context/useFirebase";
+import VoiceMessageRecorder from "@/components/VoiceMessage/VoiceMessageRecorder";
+import AudioMessage from "@/components/Audio/AudioMessage";
 
-const messages = [
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-  { name: "Nazma", message: "Me: are you available", time: "1 week" },
-];
+// const messages = [
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+//   { name: "Nazma", message: "Me: are you available", time: "1 week" },
+// ];
 
-const chatMessages = [
-  { sender: "Nazma", text: "Hi There", time: "02:22 PM" },
-  { sender: "You", text: "How Are You Doing?", time: "02:22 PM" },
-  { sender: "Nazma", text: "I'm Good Thank You!", time: "02:22 PM" },
-  { sender: "You", text: "Hii", time: "02:22 PM" },
-];
+// const chatMessages = [
+//   { sender: "Nazma", text: "Hi There", time: "02:22 PM" },
+//   { sender: "You", text: "How Are You Doing?", time: "02:22 PM" },
+//   { sender: "Nazma", text: "I'm Good Thank You!", time: "02:22 PM" },
+//   { sender: "You", text: "Hii", time: "02:22 PM" },
+// ];
 
 export default function Chat() {
   const [isModalOpen, setModalOpen] = useState(false);
+  const [isRecordingMode, setIsRecordingMode] = useState(false);
+  const {
+    currentUser,
+    users,
+    selectedUser,
+    messages,
+    fetchAndSetCurrentUser,
+    setSelectedUser,
+    sendMessage,
+    sendVoiceMessage,
+  } = useFirebase();
+
+  const [messageText, setMessageText] = useState("");
+  const messagesEndRef = useRef(null);
+
+  // Fetch current user on mount
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const {
+          data: { userData },
+        } = await GetLoggedInUser();
+        if (userData) {
+          console.log("user data", userData);
+          fetchAndSetCurrentUser(userData);
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    if (users.length > 0) {
+      setSelectedUser(users[0]);
+    }
+  }, [users]);
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    console.log("message", messageText);
+    e.preventDefault();
+
+    if (await sendMessage(messageText)) {
+      setMessageText("");
+    }
+  };
+
+  const handleVoiceRecorded = async (audioBlob) => {
+    if (await sendVoiceMessage(audioBlob)) {
+      setIsRecordingMode(false);
+    }
+  };
+
+  const toggleRecordingMode = () => {
+    setIsRecordingMode(!isRecordingMode);
+  };
+
+  if (!currentUser) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="flex h-full p-4 text-white mb-10">
       {/* Sidebar */}
@@ -46,23 +124,28 @@ export default function Chat() {
             <img src={searchChat} alt="search Icon" className="mb-3"></img>
           </div>
         </div>
-        <div className="space-y-4">
-          {messages.map((msg, index) => (
+        <div className="space-y-4 cursor-pointer">
+          {users.map((user, index) => (
             <div
               key={index}
               className="flex items-center justify-between p-3 bg-transparent rounded-lg"
             >
-              <div className="flex items-center space-x-3">
+              <div
+                className="flex items-center space-x-3"
+                onClick={() => setSelectedUser(user)}
+              >
                 <img src={chatAvatar} alt="avatar" className="rounded-full" />
                 <div>
-                  <p className="font-semibold">{msg.name}</p>
-                  <p className="text-sm text-gray-400">{msg.message}</p>
+                  <p className="font-semibold">
+                    {user.username} {user.online ? "🟢" : "🔴"}
+                  </p>
+                  <p className="text-sm text-gray-400">{user.message}</p>
                 </div>
               </div>
               <div className="text-xs text-gray-400 flex flex-col">
-                <span> {msg.time}</span>
+                <span> {user.time}</span>
                 <div className="flex justify-between">
-                  <img src={chatMsg} alt="chat msg" />
+                  <img src={chatMsg} alt="chat user" />
                   <img src={chatStar} alt="chat star" />
                 </div>
               </div>
@@ -78,7 +161,7 @@ export default function Chat() {
             <div className="flex items-center space-x-3 ">
               <img src={chatAvatar} alt="Nazma" className="rounded-full" />
               <div className="flex flex-col">
-                <p className="font-bold">Nazma</p>
+                <p className="font-bold">{selectedUser?.username}</p>
                 <span className="text-sm text-green-400">Active Now</span>
               </div>
             </div>
@@ -92,23 +175,49 @@ export default function Chat() {
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-4">
-          {chatMessages.map((msg, index) => (
+          {messages.map((msg) => (
             <div
-              key={index}
+              key={msg.id}
               className={`flex ${
-                msg.sender === "You" ? "justify-end" : "justify-start"
+                msg.senderId === currentUser._id
+                  ? "justify-end"
+                  : "justify-start"
               }`}
             >
-              <div
+              {msg.type === "voice" ? (
+                <AudioMessage
+                  url={msg.voiceUrl}
+                  time={
+                    msg.createdAt?.toDate().toLocaleTimeString() || "Sending..."
+                  }
+                />
+              ) : (
+                <div
+                  className={`max-w-xs p-3 rounded-lg ${
+                    msg.senderId === currentUser._id
+                      ? "bg-purple-600"
+                      : "bg-gray-800"
+                  }`}
+                >
+                  <p>{msg.text}</p>
+                  <span className="text-xs text-gray-400 block mt-1">
+                    {msg.createdAt?.toDate().toLocaleTimeString() ||
+                      "Sending..."}
+                  </span>
+                </div>
+              )}
+              {/* <div
                 className={`max-w-xs p-3 rounded-lg ${
-                  msg.sender === "You" ? "bg-purple-600" : "bg-gray-800"
+                  msg.senderId === currentUser._id
+                    ? "bg-purple-600"
+                    : "bg-gray-800"
                 }`}
               >
                 <p>{msg.text}</p>
                 <span className="text-xs text-gray-400 block mt-1">
-                  {msg.time}
+                  {msg.createdAt?.toDate().toLocaleTimeString() || "Sending..."}
                 </span>
-              </div>
+              </div> */}
             </div>
           ))}
         </div>
@@ -122,71 +231,41 @@ export default function Chat() {
             Create an Offer
           </button>
         </div>
-        <div className="flex items-center space-x-4 mt-4 bg-gray-900 p-3 rounded-lg">
-          <input
-            type="text"
-            className="flex-1 bg-transparent text-white p-2 outline-none"
-            placeholder="Type your message"
-          />
-          <FaRegSmile className="text-white cursor-pointer" size={20} />
-          <FaPaperclip className="text-white cursor-pointer" />
-          <img src={micChat} alt="mic" className="cursor-pointer" />
-          <button className="bg-pink-600 p-2 px-4 rounded-lg text-white">
-            Send
-          </button>
+        <div className="flex items-center justify-end space-x-4 mt-4 bg-gray-900 p-3 rounded-lg">
+          {isRecordingMode ? (
+            <VoiceMessageRecorder onVoiceRecorded={handleVoiceRecorded} />
+          ) : (
+            <>
+              <input
+                type="text"
+                className="flex-1 bg-transparent text-white p-2 outline-none"
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Type your message"
+              />
+              <FaRegSmile className="text-white cursor-pointer" size={20} />
+              <FaPaperclip className="text-white cursor-pointer" />
+              <img
+                src={micChat}
+                alt="mic"
+                className="cursor-pointer"
+                onClick={toggleRecordingMode}
+              />
+              <button
+                className="bg-pink-600 p-2 px-4 rounded-lg text-white"
+                onClick={handleSendMessage}
+              >
+                Send
+              </button>
+            </>
+          )}
+
           <GigModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
         </div>
       </div>
 
       {/* Profile Section */}
-      <div className="w-1/4  p-6 rounded-lg text-white">
-        <h2 className="text-lg font-bold mb-4">
-          About <span className="underline">John</span>
-        </h2>
-        <div className="space-y-2 text-sm">
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">From</span>{" "}
-            <span className="font-semibold">Russia</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">On SIMPLEWORK since</span>{" "}
-            <span className="font-semibold">Jan 2020</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">English</span>{" "}
-            <span className="font-semibold">Fluent</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">Spanish</span>{" "}
-            <span className="font-semibold">Conversational</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">German</span>{" "}
-            <span className="font-semibold">Conversational</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">Response Rate</span>{" "}
-            <span className="font-semibold">100%</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">Ratings</span>{" "}
-            <span className="font-semibold">4.5</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">Completed Orders</span>{" "}
-            <span className="font-semibold">34</span>
-          </p>
-          <p className="flex justify-between pr-6">
-            <span className="text-gray-300">Active Orders</span>{" "}
-            <span className="font-semibold">3</span>
-          </p>
-        </div>
-        <button className="mt-6 px-6 bg-gradient-to-r from-pink-500 to-purple-600 py-2 rounded-full  font-normal">
-          Support
-        </button>
-        <img src={gigChat} alt="gig" className="mt-4 w-[90%]"></img>
-
-      </div>
+      <ChatProfileSection />
     </div>
   );
 }

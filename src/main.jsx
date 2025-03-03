@@ -44,7 +44,6 @@ import PostaJob from "./pages/PostaJob";
 import Home from "./pages/Home/Home";
 import ForgotPassword from "./pages/Setting/ForgotPassword";
 import Layout2 from "./Layout2";
-import FavoriteGigs from "./pages/FavouriteGigs";
 import ManagePaymentMethods from "./pages/ManagePaymentMethods/ManagePaymentMethods";
 import { Toaster } from "react-hot-toast";
 import ConfirmPassword from "./pages/Setting/ConfirmPassword";
@@ -54,6 +53,7 @@ import Blogs from "./pages/Blogs";
 import Guides from "./pages/Guides";
 import ProductivityHacks from "./pages/ProductivityHacks";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
+import { FirebaseProvider } from "./context/useFirebase";
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
@@ -156,7 +156,8 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Provider store={store}>
+    <FirebaseProvider>
+      <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         {" "}
         {/* Wrap with QueryClientProvider */}
@@ -164,5 +165,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Toaster position="top-right" reverseOrder={false} />
       </QueryClientProvider>
     </Provider>
+    </FirebaseProvider>
   </React.StrictMode>
 );

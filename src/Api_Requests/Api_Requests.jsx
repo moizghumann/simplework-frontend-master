@@ -1,5 +1,5 @@
 import axios from "axios";
-import { BASE_URL, BASE_URL_LOCAL } from "../utils/Config";
+import { BASE_URL } from "../utils/Config";
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -71,7 +71,7 @@ export const forgetPasswordStepTwo = (payload) =>
   api.post("/forget-password/verify-code", payload);
 export const resetPassword = (payload) =>
   api.post("/forget-password/reset-password", payload);
-export const logout = (payload) => api.get("/logout");
+export const logout = () => api.get("/logout");
 
 export const UpdateStatusApi = (payload) =>
   api.patch("/appointment/status", payload);
